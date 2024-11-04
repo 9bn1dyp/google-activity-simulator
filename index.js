@@ -1,6 +1,7 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { exec } from 'child_process';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -31,7 +32,7 @@ async function startCLI() {
     switch (answers.action) {
         case 'Automate':
             console.log(chalk.green('Automate selected'));
-            break;  // no need to restart CLI here unless you have specific code to handle this
+            break;
         case 'Login':
             await loginMenu();
             break;
@@ -40,7 +41,6 @@ async function startCLI() {
             process.exit();
     }
 
-    // only restart CLI if Automate or Login complete
     await startCLI();
 }
 
@@ -60,24 +60,23 @@ async function loginMenu() {
     ]);
 
     // clear CLI
-    process.stdout.write('\x1Bc'); 
+    process.stdout.write('\x1Bc');
 
     switch (answers.loginAction) {
         case 'Add Gmail':
             await addGmail();
             break;
         case 'View Saved Gmails':
-            console.log(chalk.yellow('You selected: View Saved Gmails'));
+            await viewSavedGmails();
             break;
         case 'Return':
-            return; // go back to main CLI without starting loginMenu again
+            return;
     }
 
-    // return to main menu after login tasks are done
     await startCLI();
 }
 
-// email:password input into signIn.js
+// add Gmail function (existing code)
 async function addGmail() {
     const { emailPassword } = await inquirer.prompt([
         {
@@ -85,20 +84,17 @@ async function addGmail() {
             name: 'emailPassword',
             message: 'Enter email and password in the format email:password:',
             validate: input => {
-                const regex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}:[^\s]+$/; // regex match email:password format
+                const regex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}:[^\s]+$/;
                 return regex.test(input) ? true : 'Please enter in the format email:password';
             }
         }
     ]);
 
     const [email, password] = emailPassword.split(':');
-
-    // path to the signIn.js
     const signInPath = path.resolve(__dirname, 'src', 'services', 'signIn.js');
 
     console.log(chalk.blue('Opening browser...'));
 
-    // run signIn.js with email and password and wait for it to finish
     await new Promise((resolve, reject) => {
         exec(`node ${signInPath} "${email}" "${password}"`, (error, stdout, stderr) => {
             if (error) {
@@ -116,9 +112,56 @@ async function addGmail() {
         });
     });
 
-    // clear CLI
     process.stdout.write('\x1Bc');
 }
 
-// start CLI
+// function to view saved gmails with pagination
+async function viewSavedGmails() {
+    const cookiesPath = path.resolve(__dirname, 'cookies');
+    let files = [];
+
+    try {
+        files = fs.readdirSync(cookiesPath).map(file => path.basename(file, '.json'));
+    } catch (error) {
+        console.error(chalk.red('Error reading cookies folder:'), error.message);
+        return;
+    }
+
+    let pageIndex = 0;
+    const pageSize = 10;
+    let hasMorePages = files.length > 0;
+
+    while (hasMorePages) {
+        const pageFiles = files.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+        console.log(chalk.yellow(`\nSaved Gmails - Page ${pageIndex + 1}`));
+        pageFiles.forEach((file, index) => {
+            console.log(`${index + 1}. ${file}@gmail.com`);
+        });
+
+        const choices = ['Next Page', 'Exit'];
+        const isLastPage = (pageIndex + 1) * pageSize >= files.length;
+        if (isLastPage) {
+            hasMorePages = false;
+            choices[0] = 'Back to Main Menu';
+        }
+
+        const { action } = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'action',
+                message: 'Select an action:',
+                choices
+            }
+        ]);
+
+        if (action === 'Next Page') {
+            pageIndex++;
+        } else {
+            hasMorePages = false;
+        }
+
+        // Clear CLI
+        process.stdout.write('\x1Bc');
+    }
+}
 startCLI();
