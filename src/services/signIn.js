@@ -1,41 +1,17 @@
-import { chromium } from 'playwright';
 import fs from 'fs';
-import UserAgent from 'user-agents';
 import path from 'path';
+import { initializeBrowser } from './initialize.js';
 
 // email/pass from args
 const email = process.argv[2];
 const password = process.argv[3];
 
 (async () => {
-    // start chromium
-    const browser = await chromium.launch({ 
-        headless: false,
-        args: [
-          '--disable-blink-features=AutomationControlled',
-          '--no-sandbox',         
-          '--disable-web-security', 
-          '--disable-infobars',    
-          '--disable-extensions',   
-          '--start-maximized',      
-          '--window-size=1280,720'
-        ]
-    });
-    // new user agent instance
-    const userAgent = new UserAgent({
-        platform: 'Win32', 
-        deviceCategory: 'desktop',
-        });
     
-    // add ua to context
-    const context = await browser.newContext({
-        userAgent: userAgent.toString(),
-        viewport: { width: 1280, height: 720 },
-        deviceScaleFactor: 1,
-    });
+    // start chromium
+    const { browser, context, page } = await initializeBrowser();
 
     // open sign in page
-    const page = await context.newPage();
     await page.goto('https://accounts.google.com/signin');
 
     // email field

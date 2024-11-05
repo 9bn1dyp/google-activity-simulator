@@ -115,7 +115,7 @@ async function addGmail() {
     process.stdout.write('\x1Bc');
 }
 
-// function to view saved gmails with pagination
+// view saved gmails with pagination
 async function viewSavedGmails() {
     const cookiesPath = path.resolve(__dirname, 'cookies');
     let files = [];
@@ -127,10 +127,12 @@ async function viewSavedGmails() {
         return;
     }
 
+    // max 10 displayed on one page
     let pageIndex = 0;
     const pageSize = 10;
     let hasMorePages = files.length > 0;
 
+    // iterate until no more left
     while (hasMorePages) {
         const pageFiles = files.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
         console.log(chalk.yellow(`\nSaved Gmails - Page ${pageIndex + 1}`));
@@ -140,6 +142,7 @@ async function viewSavedGmails() {
 
         const choices = ['Next Page', 'Exit'];
         const isLastPage = (pageIndex + 1) * pageSize >= files.length;
+        // if last page display return to menu option
         if (isLastPage) {
             hasMorePages = false;
             choices[0] = 'Back to Main Menu';
