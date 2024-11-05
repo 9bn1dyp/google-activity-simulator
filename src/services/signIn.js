@@ -7,23 +7,18 @@ const email = process.argv[2];
 const password = process.argv[3];
 
 (async () => {
-    
+
     // start chromium
     const { browser, context, page } = await initializeBrowser();
 
     // open sign in page
-    await page.goto('https://accounts.google.com/signin');
-
-    // email field
     try {
-        // wait for email input visibility
-        const emailInputLocator = page.locator('xpath=/html/body/div[1]/div[1]/div[2]/c-wiz/div/div[2]/div/div/div[1]/form/span/section/div/div/div[1]/div/div[1]/div/div[1]/input');
-        await emailInputLocator.fill(email, { timeout: 30000 });
+        // Go to Google sign-in page and wait for it to load
+        await page.goto('https://accounts.google.com/signin', { waitUntil: 'load', timeout: 30000 });
     } catch (error) {
-        // log error to console
-        console.error("Error filling the email input:", error.message);
-        // close
+        console.error("Error loading sign-in page:", error.message);
         await browser.close();
+        return;
     }
 
     // email field
