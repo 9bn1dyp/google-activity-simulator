@@ -1,7 +1,10 @@
 import { chromium } from 'playwright';
 import UserAgent from 'user-agents';
+import fs from 'fs';
+import path from 'path';
+import { logToFile } from './log.js';
 
-export async function initializeBrowser() {
+export async function initializeBrowser(cookieFilePath = null) {
     // start chromium
     const browser = await chromium.launch({
         headless: false,
@@ -21,15 +24,25 @@ export async function initializeBrowser() {
         platform: 'Win32',
         deviceCategory: 'desktop',
     });
-
-    // // add ua to new context
-    const context = await browser.newContext({
+    // new context with vp and ua
+    const contextOptions = {
         userAgent: userAgent.toString(),
         viewport: { width: 1280, height: 720 },
         deviceScaleFactor: 1,
-    });
+    };
 
-    // open new page
+    // check if cookie and load
+    if (cookieFilePath && fs.existsSync(cookieFilePath)) {
+        const cookies = JSON.parse(fs.readFileSync(cookieFilePath, 'utf-8'));
+        contextOptions.storageState = cookies;
+        logToFile(path.basename(cookieFilePath),`Loaded ${cookieFilePath}`);
+    }
+
+    // create new browser
+    const context = await browser.newContext(contextOptions);
+
+    // open page
     const page = await context.newPage();
+
     return { browser, context, page };
 }

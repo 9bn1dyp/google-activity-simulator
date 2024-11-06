@@ -4,14 +4,17 @@ import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Worker } from 'worker_threads';
+import Session from './src/models/Session.js';
+import { logToFile } from '.src/services/log.js';
+
 
 console.log(chalk.blue('Google Activity Simulator'));
 
-// __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// start the CLI
+// start CLI
 async function startCLI() {
     const answers = await inquirer.prompt([
         {
@@ -26,22 +29,114 @@ async function startCLI() {
         }
     ]);
 
-    // clear CLI
     process.stdout.write('\x1Bc');
 
     switch (answers.action) {
         case 'Automate':
-            console.log(chalk.green('Automate selected'));
+            await automationMenu();
             break;
         case 'Login':
             await loginMenu();
             break;
         case 'Exit':
             console.log(chalk.red('Goodbye!'));
+            logToFile(null, 'Terminated process')
             process.exit();
     }
 
     await startCLI();
+}
+
+// automation menu
+async function automationMenu() {
+    const answers = await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'automationAction',
+            message: 'Select an automation option:',
+            choices: [
+                'All Accounts',
+                'Selected Accounts',
+                'Return to Main Menu'
+            ]
+        }
+    ]);
+
+    process.stdout.write('\x1Bc');
+
+    const cookiesPath = path.resolve(__dirname, 'cookies');
+    let cookieFiles = [];
+
+    // check if cookie files exist
+    try {
+        cookieFiles = fs.readdirSync(cookiesPath).filter(file => file.endsWith('.json'));
+    } catch (error) {
+        logToFile(null, `Error reading cookies folder: ${error.message}`)
+        return startCLI();
+    }
+
+    if (cookieFiles.length === 0) {
+        console.log(chalk.red('No cookies available. Please login with an account to get started.'));
+        logToFile(null, 'No cookies available')
+        return startCLI();
+    }
+
+    switch (answers.automationAction) {
+        case 'All Accounts':
+            await startSessions(cookieFiles);
+            break;
+        case 'Selected Accounts':
+            await selectAccountsAndStartSessions(cookieFiles);
+            break;
+        case 'Return to Main Menu':
+            return;
+    }
+
+    await startCLI();
+}
+
+// start a sessions for all selected accounts
+async function startSessions(cookieFiles) {
+    console.log(chalk.green('Starting sessions for all accounts.'));
+
+    for (const file of cookieFiles) {
+        const cookieFilePath = path.resolve(__dirname, 'cookies', file);
+        const session = new Session(cookieFilePath);
+
+        // create worker threads for each session
+        new Worker(new URL('./worker.js', import.meta.url), {
+            workerData: { cookieFilePath }
+        });
+    }
+}
+
+// select specific accounts and start sessions
+async function selectAccountsAndStartSessions(cookieFiles) {
+    const { selectedAccounts } = await inquirer.prompt([
+        {
+            type: 'checkbox',
+            name: 'selectedAccounts',
+            message: 'Select accounts to use:',
+            choices: cookieFiles.map(file => ({ name: file.replace('.json', '@gmail.com'), value: file }))
+        }
+    ]);
+
+    if (selectedAccounts.length === 0) {
+        console.log(chalk.red('No accounts selected.'));
+        return;
+    }
+
+    console.log(chalk.green('Starting sessions for selected accounts.'));
+
+    for (const file of selectedAccounts) {
+        const cookieFilePath = path.resolve(__dirname, 'cookies', file);
+        const session = new Session(cookieFilePath);
+
+        // create worker threads for each session
+        new Worker(new URL('./worker.js', import.meta.url), {
+            workerData: { cookieFilePath }
+        });
+    }
 }
 
 // login menu CLI
@@ -93,21 +188,22 @@ async function addGmail() {
     const [email, password] = emailPassword.split(':');
     const signInPath = path.resolve(__dirname, 'src', 'services', 'signIn.js');
 
-    console.log(chalk.blue('Opening browser...'));
+    console.log(chalk.blue('Opening browser.'));
+    logToFile(null, 'Opening browser.')
 
     await new Promise((resolve, reject) => {
         exec(`node ${signInPath} "${email}" "${password}"`, (error, stdout, stderr) => {
             if (error) {
-                console.error(chalk.red(`Error: ${error.message}`));
+                logToFile(null, `Error: ${error.message}`)
                 reject(error);
                 return;
             }
             if (stderr) {
-                console.error(chalk.red(`stderr: ${stderr}`));
+                logToFile(null, `stderr: ${stderr}`)
                 reject(stderr);
                 return;
             }
-            console.log(chalk.green(stdout));
+            logToFile(null, stdout)
             resolve();
         });
     });
@@ -123,6 +219,7 @@ async function viewSavedGmails() {
     try {
         files = fs.readdirSync(cookiesPath).map(file => path.basename(file, '.json'));
     } catch (error) {
+        logToFile(null, `Error reading cookies folder: ${error.message}`)
         console.error(chalk.red('Error reading cookies folder:'), error.message);
         return;
     }
@@ -167,4 +264,5 @@ async function viewSavedGmails() {
         process.stdout.write('\x1Bc');
     }
 }
+
 startCLI();
