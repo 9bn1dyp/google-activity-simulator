@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Worker } from 'worker_threads';
 import Session from './src/models/Session.js';
-import { logToFile } from '.src/services/log.js';
+import { logToFile } from './src/services/log.js';
 
 
 console.log(chalk.blue('Google Activity Simulator'));

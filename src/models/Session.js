@@ -16,6 +16,10 @@ class Session {
         this.browser = browser;
         this.context = context;
         this.page = page;
+
+        // load google, accept cookies if needed
+        await this.page.goto('https://www.google.com');
+        await this.acceptCookies();
     }
 
     // error log, send account name if cookies not null
@@ -47,12 +51,6 @@ class Session {
         }
 
         try {
-            // load google
-            await this.page.goto('https://www.google.com');
-
-            // accept cookies if needed
-            await this.acceptCookies();
-
             // go to search query
             await this.page.goto(`https://www.google.com/search?q=${query}`);
 
