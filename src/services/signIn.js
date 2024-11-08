@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { initializeBrowser } from './initialize.js';
+import { logToFile } from './log.js';
 
 // email/pass from args
 const email = process.argv[2];
@@ -9,7 +10,7 @@ const password = process.argv[3];
 (async () => {
 
     // start chromium
-    const { browser, context, page } = await initializeBrowser();
+    const { browser, context, page } = await initializeBrowser(null, false);
 
     // open sign in page
     try {
@@ -31,8 +32,12 @@ const password = process.argv[3];
         const buttonLocator = page.locator('xpath=/html/body/div[1]/div[1]/div[2]/c-wiz/div/div[3]/div/div[1]/div/div/button');
         await buttonLocator.waitFor({ state: 'visible', timeout: 30000 });
         await buttonLocator.click();
+        logToFile(null, "Entered email field")
+
     } catch (error) {
         console.error("Error during email input process:", error.message);
+        logToFile(null, `Error during email input process: ${error}`)
+
         await browser.close();
         return; 
     }
@@ -50,8 +55,12 @@ const password = process.argv[3];
         const passwordButtonLocator = page.locator('xpath=/html/body/div[1]/div[1]/div[2]/c-wiz/div/div[3]/div/div[1]/div/div/button');
         await passwordButtonLocator.waitFor({ state: 'visible', timeout: 30000 });
         await passwordButtonLocator.click();
+        logToFile(null, "Entered password field")
+
     } catch (error) {
         console.error("Error during password input process:", error.message);
+        logToFile(null, `Error during password input process: ${error}`)
+
         await browser.close();
         return; 
     }
@@ -65,17 +74,28 @@ const password = process.argv[3];
         const currentUrl = page.url();
         
         if (currentUrl.includes('myaccount.google.com') || currentUrl.includes('gmail.com')) {
+            
+            logToFile(null, "Login successful")
             console.log('Login successful: Redirected to account page.');
 
-            // save cookies if logged in
             const folderPath = path.resolve('cookies');
             if (!fs.existsSync(folderPath)) {
-                fs.mkdirSync(folderPath, { recursive: true }); // create cookies folder if null
+                // create cookies folder if null
+                fs.mkdirSync(folderPath, { recursive: true });
             }
 
+            // define filename
             const filename = path.join(folderPath, `${email.split('@')[0]}.json`);
-            const storageState = await context.storageState();
-            fs.writeFileSync(filename, JSON.stringify(storageState, null, 2));
+            
+            // save cookies
+            try {
+                const storageState = await context.storageState();
+                fs.writeFileSync(filename, JSON.stringify(storageState, null, 2));
+                logToFile(null, `Created ${email.split('@')[0]}.json`);
+            } catch (error) {
+                console.error("Error saving cookies:", error.message);
+                logToFile(null, `Error saving cookies: ${error.message}`);
+            }
 
             clearInterval(intervalId);
             await browser.close();
@@ -84,7 +104,8 @@ const password = process.argv[3];
 
         // if timeout reached throw error
         if (Date.now() - startTime > timeoutDuration) {
-            console.log('Login failed: Timeout reached without redirection to account page.');
+            console.log(chalk.red('Login failed: Timeout reached without redirection to account page.'));
+            logToFile(null, 'Login failed: Timeout reached without redirection to account page')
             clearInterval(intervalId);
             await browser.close();
         }

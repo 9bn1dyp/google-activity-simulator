@@ -4,10 +4,10 @@ import fs from 'fs';
 import path from 'path';
 import { logToFile } from './log.js';
 
-export async function initializeBrowser(cookieFilePath = null) {
+export async function initializeBrowser(cookieFilePath = null, isHeadless = true) {
     // start chromium
     const browser = await chromium.launch({
-        headless: true,
+        headless: isHeadless,
         args: [
             '--disable-blink-features=AutomationControlled',
             '--no-sandbox',
