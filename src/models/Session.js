@@ -67,39 +67,72 @@ class Session {
     // click on tab
     async clickTab(tabName) {
         if (!this.page) {
-            this.logger('Session not initialized, call init() first')
+            this.logger('Session not initialized, call init() first');
             throw new Error("Session not initialized, call init() first");
         }
     
-        try {
-            let tabSelector;
-            
-            // specific for tabs
-            switch (tabName) {
-                case "Shopping":
-                    tabSelector = this.page.getByRole('link', { name: 'Shopping' });
-                    break;
-                case "Images":
-                    tabSelector = this.page.getByRole('link', { name: 'Images' });
-                    break;
-                case "News":
-                    tabSelector = this.page.getByRole('link', { name: 'News' });
-                    break;
-                default:
-                    // first instance
-                    tabSelector = this.page.locator(`text=${tabName}`).first();
-                    break;
-            }
+        let tabSelector;
+        // fallback for manual redirect
+        let fallbackUrl;
+
+        // current search query from the URL
+        const currentUrl = await this.page.url();
+        const urlParams = new URLSearchParams(new URL(currentUrl).search);
+        const query = urlParams.get('q');
+
+        // return if no query
+        if (!query) {
+            this.logger('No query found in the current URL');
+            return;
+        }
+        
+        // specific selectors
+        switch (tabName) {
+            case "Shopping":
+                tabSelector = this.page.locator('a[role="link"][href*="tbm=shop"]');
+                fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=shop`;
+                break;
+            case "Images":
+                tabSelector = this.page.locator('a[role="link"][href*="tbm=isch"]');
+                fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=isch`;
+                break;
+            case "News":
+                tabSelector = this.page.locator('a[role="link"][href*="tbm=nws"]');
+                fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=nws`;
+                break;
+            case "Videos":
+                tabSelector = this.page.locator('a[role="link"][href*="tbm=vid"]');
+                fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=vid`;
+                break;
+            default:
+                tabSelector = this.page.locator(`text=${tabName}`).first();
+                fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(tabName)}`;
+                break;
+        }
     
+        try {
+
+            // timeout until visible
+            await tabSelector.waitFor({ state: 'visible', timeout: 10000 });
             await tabSelector.click();
             await this.page.mouse.wheel(0, 200);
-
+    
             this.logger(`Clicked on ${tabName} tab`);
+
         } catch (error) {
-            this.logger(`Error clicking ${tabName} tab: ${error}`);
+
+            this.logger(`Error clicking ${tabName} tab: ${error}. Attempting fallback URL.`);
+            try {
+                // direct to fallback if error
+                await this.page.goto(fallbackUrl);
+                this.logger(`Navigated directly to ${tabName} tab URL`);
+            } catch (navError) {
+                this.logger(`Failed to navigate directly to ${tabName} tab URL: ${navError}`);
+            }
+
         }
     }
-
+    
     // click first result
     async interactWithResults() {
         if (!this.page) {
