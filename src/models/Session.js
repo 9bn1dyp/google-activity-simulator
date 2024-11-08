@@ -10,6 +10,15 @@ class Session {
         this.page = null;
     }
 
+    // error log, send account name if cookies not null
+    logger(message) {
+        if (this.cookieFilePath) {
+            logToFile(path.basename(this.cookieFilePath), message);
+        } else {
+            logToFile(null, message);
+        };
+    }
+
     // init browser
     async init() {
         const { browser, context, page } = await initializeBrowser(this.cookieFilePath);
@@ -20,15 +29,6 @@ class Session {
         // load google, accept cookies if needed
         await this.page.goto('https://www.google.com');
         await this.acceptCookies();
-    }
-
-    // error log, send account name if cookies not null
-    logger(message) {
-        if (this.cookieFilePath) {
-            logToFile(path.basename(this.cookieFilePath), message);
-        } else {
-            logToFile(null, message);
-        };
     }
 
     // accept cookies 
@@ -46,16 +46,17 @@ class Session {
     // search query
     async search(query) {
         if (!this.page) {
-            this.logger('Session not initialized. Call init() first.')
-            throw new Error("Session not initialized. Call init() first.");
+            this.logger('Session not initialized, call init() first')
+            throw new Error("Session not initialized, call init() first");
         }
 
         try {
-            // go to search query
-            await this.page.goto(`https://www.google.com/search?q=${query}`);
+            /* go to search query, &start=10 param leads to page 2,
+            prevents an errors from formatting on first page */
+            await this.page.goto(`https://www.google.com/search?q=${query}&start=10`);
 
             // log search
-            this.logger(`Browsing, query:${query}`)
+            this.logger(`Browsing ${query}`)
 
         } catch (error) {
             this.logger(`Error performing search: ${error}`)
@@ -63,7 +64,117 @@ class Session {
         }
     }
 
-    // close broswer session
+    // click on tab
+    async clickTab(tabName) {
+        if (!this.page) {
+            this.logger('Session not initialized, call init() first')
+            throw new Error("Session not initialized, call init() first");
+        }
+    
+        try {
+            let tabSelector;
+            
+            // specific for tabs
+            switch (tabName) {
+                case "Shopping":
+                    tabSelector = this.page.getByRole('link', { name: 'Shopping' });
+                    break;
+                case "Images":
+                    tabSelector = this.page.getByRole('link', { name: 'Images' });
+                    break;
+                case "News":
+                    tabSelector = this.page.getByRole('link', { name: 'News' });
+                    break;
+                default:
+                    // first instance
+                    tabSelector = this.page.locator(`text=${tabName}`).first();
+                    break;
+            }
+    
+            await tabSelector.click();
+            await this.page.mouse.wheel(0, 200);
+
+            this.logger(`Clicked on ${tabName} tab`);
+        } catch (error) {
+            this.logger(`Error clicking ${tabName} tab: ${error}`);
+        }
+    }
+
+    // click first result
+    async interactWithResults() {
+        if (!this.page) {
+            this.logger('Session not initialized, call init() first');
+            throw new Error("Session not initialized, call init() first");
+        }
+    
+        try {
+            // results with links have jsname="UWckNb" or jsname="hspDDf" if an advert link
+            const firstResultLink = this.page.locator('a[jsname="UWckNb"], a[jsname="hspDDf"]').first();
+    
+            // scroll into view
+            await firstResultLink.scrollIntoViewIfNeeded();
+    
+            // click the link
+            await firstResultLink.click({ force: true });
+    
+            this.logger("Clicked on the link of the first search result");
+        } catch (error) {
+            this.logger(`Error interacting with results: ${error}`);
+        }
+    }
+    
+    // click first video
+    async clickVideo() {
+        if (!this.page) {
+            this.logger('Session not initialized, call init() first')
+            throw new Error("Session not initialized, call init() first");
+        }
+
+        try {
+            // go video tab
+            this.clickTab("Videos")
+    
+            // wait for the videos to load on the page
+            await this.page.waitForSelector('a[href*="youtube.com"]', { timeout: 5000 });
+    
+            // select the video link
+            const firstVideo = this.page.locator('a[href*="youtube.com"]').first();
+            await firstVideo.click();
+            
+            this.logger("Clicked on the first video result");
+
+            // wait for video to load, focus iframe, play video
+            await this.page.waitForSelector('video, iframe', { timeout: 5000 });
+            const videoFrame = this.page.frameLocator('iframe[src*="youtube.com"]');
+
+            
+        } catch (error) {
+            this.logger(`Error clicking the first video result: ${error}`);
+        }
+    }
+
+    // randomize interactions, can only be used after .search()
+    async randomInteraction() {
+        const actions = [
+            () => this.clickTab("Shopping"),
+            () => this.clickTab("Images"),
+            () => this.clickTab("News"),
+            () => this.interactWithResults(),
+            () => this.clickVideo()
+        ];
+
+        const randomAction = actions[Math.floor(Math.random() * actions.length)];
+
+        try {
+            // execute the selected random action
+            await randomAction();
+            this.logger("Performed a random interaction");
+        } catch (error) {
+            this.logger(`Error during random interaction: ${error}.`);
+        }
+    }
+
+    // close browser session
     async close() {
         if (this.browser) {
             await this.browser.close();

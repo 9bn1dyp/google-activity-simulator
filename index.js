@@ -7,12 +7,14 @@ import { fileURLToPath } from 'url';
 import { Worker } from 'worker_threads';
 import Session from './src/models/Session.js';
 import { logToFile } from './src/services/log.js';
-
+import readline from 'readline';
 
 console.log(chalk.blue('Google Activity Simulator'));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const workers = [];
 
 // start CLI
 async function startCLI() {
@@ -39,12 +41,28 @@ async function startCLI() {
             await loginMenu();
             break;
         case 'Exit':
-            console.log(chalk.red('Goodbye!'));
             logToFile(null, 'Terminated process')
             process.exit();
     }
 
     await startCLI();
+}
+
+// key press detection func used for 'press any key'
+function waitForKeyPress() {
+    return new Promise((resolve) => {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+            terminal: false
+        });
+
+        // once key press, resolve and exit
+        rl.question('Press any key to stop all processes: ', () => {
+            rl.close();
+            resolve();
+        });
+    });
 }
 
 // automation menu
@@ -97,6 +115,7 @@ async function automationMenu() {
 
 // start a sessions for all selected accounts
 async function startSessions(cookieFiles) {
+
     console.log(chalk.green('Starting sessions for all accounts.'));
 
     for (const file of cookieFiles) {
@@ -104,10 +123,15 @@ async function startSessions(cookieFiles) {
         const session = new Session(cookieFilePath);
 
         // create worker threads for each session
-        new Worker(new URL('./worker.js', import.meta.url), {
+        const worker = new Worker(new URL('./worker.js', import.meta.url), {
             workerData: { cookieFilePath }
         });
+        workers.push(worker);
     }
+
+    await waitForKeyPress();
+    workers.forEach(worker => worker.terminate());
+    console.log(chalk.red('All processes have been terminated.'));
 }
 
 // select specific accounts and start sessions
@@ -133,10 +157,15 @@ async function selectAccountsAndStartSessions(cookieFiles) {
         const session = new Session(cookieFilePath);
 
         // create worker threads for each session
-        new Worker(new URL('./worker.js', import.meta.url), {
+        const worker = new Worker(new URL('./worker.js', import.meta.url), {
             workerData: { cookieFilePath }
         });
+        workers.push(worker);
     }
+
+    await waitForKeyPress();
+    workers.forEach(worker => worker.terminate());
+    console.log(chalk.red('All processes have been terminated.'));
 }
 
 // login menu CLI
@@ -265,4 +294,18 @@ async function viewSavedGmails() {
     }
 }
 
+// ctrc c handlee
+process.on('SIGINT', async () => {
+    console.log(chalk.red('\nShutting down...'));
+
+    if (workers.length > 0) {
+        workers.forEach(worker => worker.terminate());
+    }
+
+    await logToFile(null, 'Process terminated by user (SIGINT)');
+    console.log(chalk.red('All processes have been terminated.'));
+    process.exit(0);
+});
+
+// start
 startCLI();

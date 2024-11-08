@@ -7,7 +7,7 @@ import { logToFile } from './log.js';
 export async function initializeBrowser(cookieFilePath = null) {
     // start chromium
     const browser = await chromium.launch({
-        headless: false,
+        headless: true,
         args: [
             '--disable-blink-features=AutomationControlled',
             '--no-sandbox',
@@ -29,6 +29,7 @@ export async function initializeBrowser(cookieFilePath = null) {
         userAgent: userAgent.toString(),
         viewport: { width: 1280, height: 720 },
         deviceScaleFactor: 1,
+        mute : true
     };
 
     // check if cookie and load
