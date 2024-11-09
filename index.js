@@ -8,6 +8,7 @@ import { Worker } from 'worker_threads';
 import Session from './src/models/Session.js';
 import { logToFile } from './src/services/log.js';
 import readline from 'readline';
+import { getScore } from './src/services/getScore.js';
 
 console.log(chalk.blue('Google Activity Simulator'));
 
@@ -178,6 +179,7 @@ async function loginMenu() {
             choices: [
                 'Add Gmail',
                 'View Saved Gmails',
+                'Score',
                 'Return'
             ]
         }
@@ -192,6 +194,9 @@ async function loginMenu() {
             break;
         case 'View Saved Gmails':
             await viewSavedGmails();
+            break;
+        case 'Score':
+            await checkScores();
             break;
         case 'Return':
             return;
@@ -294,6 +299,37 @@ async function viewSavedGmails() {
     }
 }
 
+// check score of gmails, not parallel, headless off
+async function checkScores() {
+    const cookiesPath = path.resolve(__dirname, 'cookies');
+    let cookieFiles = [];
+
+    // check if cookie file exist
+    try {
+        cookieFiles = fs.readdirSync(cookiesPath).filter(file => file.endsWith('.json'));
+    } catch (error) {
+        logToFile(null, `Error reading cookies folder: ${error.message}`);
+        console.error(chalk.red('Error reading cookies folder:', error.message));
+        return;
+    }
+
+    if (cookieFiles.length === 0) {
+        console.log(chalk.red('No cookies available to check scores.'));
+        logToFile(null, 'No cookies available for score checking');
+        return;
+    }
+
+    console.log(chalk.green('Checking scores for all accounts.'));
+
+    // iterate through all cookies and call getScore
+    for (const file of cookieFiles) {
+        const cookieFilePath = path.resolve(cookiesPath, file);
+        await getScore(cookieFilePath);
+    }
+
+    console.log(chalk.blue('Score check complete for all accounts.'));
+}
+
 // ctrc c handlee
 process.on('SIGINT', async () => {
     console.log(chalk.red('\nShutting down...'));
@@ -302,7 +338,7 @@ process.on('SIGINT', async () => {
         workers.forEach(worker => worker.terminate());
     }
 
-    await logToFile(null, 'Process terminated by user (SIGINT)');
+    logToFile(null, 'Process terminated by user (SIGINT)');
     console.log(chalk.red('All processes have been terminated.'));
     process.exit(0);
 });
