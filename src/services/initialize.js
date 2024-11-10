@@ -36,7 +36,7 @@ export async function initializeBrowser(cookieFilePath = null, isHeadless = true
     if (cookieFilePath && fs.existsSync(cookieFilePath)) {
         const cookies = JSON.parse(fs.readFileSync(cookieFilePath, 'utf-8'));
         contextOptions.storageState = cookies;
-        logToFile(path.basename(cookieFilePath),`Loaded ${cookieFilePath}`);
+        logToFile(path.basename(cookieFilePath),`Loaded ${path.basename(cookieFilePath)}`);
     }
 
     // create new browser

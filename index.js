@@ -330,7 +330,7 @@ async function checkScores() {
     console.log(chalk.blue('Score check complete for all accounts.'));
 }
 
-// ctrc c handlee
+// ctrc c handle
 process.on('SIGINT', async () => {
     console.log(chalk.red('\nShutting down...'));
 

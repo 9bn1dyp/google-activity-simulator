@@ -1,7 +1,8 @@
 import { workerData } from 'worker_threads';
 import Session from './src/models/Session.js';
 import randomWord from './src/services/randomWord.js'
-
+import { logToFile } from './src/services/log.js';
+import path from 'path';
 /*
 this is the automate script that will be ran in index.js  
 
@@ -56,7 +57,9 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
             await sleep(600000);
 
         } catch (error) {
-            console.error("Error during session loop:", error);
+            account = path.basename(cookieFilePath, '.json')
+            console.error(`Error during session: ${account}`);
+            logToFile(account, `Error during session: ${error.message}`);
             break;
         }
     }

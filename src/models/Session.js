@@ -89,19 +89,19 @@ class Session {
         // specific selectors
         switch (tabName) {
             case "Shopping":
-                tabSelector = this.page.locator('a[role="link"][href*="tbm=shop"]');
+                tabSelector = this.page.locator('a[role="link"]:has-text("Shopping")')
                 fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=shop`;
                 break;
             case "Images":
-                tabSelector = this.page.locator('a[role="link"][href*="tbm=isch"]');
+                tabSelector = this.page.locator('a[role="link"]:has-text("Images")')
                 fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=isch`;
                 break;
             case "News":
-                tabSelector = this.page.locator('a[role="link"][href*="tbm=nws"]');
+                tabSelector = this.page.locator('a[role="link"]:has-text("News")')
                 fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=nws`;
                 break;
             case "Videos":
-                tabSelector = this.page.locator('a[role="link"][href*="tbm=vid"]');
+                tabSelector = this.page.locator('a[role="link"]:has-text("Videos")')
                 fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=vid`;
                 break;
             default:
@@ -113,7 +113,7 @@ class Session {
         try {
 
             // timeout until visible
-            await tabSelector.waitFor({ state: 'visible', timeout: 10000 });
+            await tabSelector.waitFor({ state: 'visible', timeout: 3000 });
             await tabSelector.click();
             await this.page.mouse.wheel(0, 200);
     
