@@ -32,24 +32,30 @@ This app aims to replicate Google interactions by simulating activity on Google 
 
 ### Interactions
 
-- Random Search
+_Random Search_
+
 ![](demogifs/search.gif)
 
-- YouTube
+_YouTube_
+
 ![](demogifs/yt.gif)
 
-- Tab interaction
+_Tab interaction_
+
 ![](demogifs/tab.gif)
 
 ### Utilities
 
-- Sign In
+_Sign In_
+
 ![](demogifs/signin.gif)
 
-- Check Score
+_Check Score_
+
 ![](demogifs/scores.gif)
 
-- Log
+_Log_
+
 ![](demogifs/log.gif)
 
 # Logic
