@@ -8,7 +8,7 @@ export async function getScore(cookieFilePath) {
 
     try {
         // reCAPTCHA demo page
-        await page.goto('https://recaptcha-demo.appspot.com/recaptcha-v3-request-scores.php');
+        await page.goto('https://antcpt.com/score_detector/');
         await page.reload();
         
         let score = null;
@@ -23,20 +23,20 @@ export async function getScore(cookieFilePath) {
             retries += 1;
 
             // retrieve score element
-            const scoreElement = await page.locator('pre.response').textContent();
-
+            const scoreElement = await page.locator('big[style*="font-size: 18pt;"]').textContent();
+            
             // parse check score 
             try {
-                const scoreData = JSON.parse(scoreElement);
-                if (scoreData && typeof scoreData.score === 'number') {
-                    score = scoreData.score;
+                const scoreMatch = scoreElement.match(/Your score is: ([0-9.]+)/);
+                if (scoreMatch) {
+                    score = parseFloat(scoreMatch[1]);
                 }
             } catch (parseError) {
                 logToFile(account, `Error parsing: ${parseError}`);
                 logToFile(account, `Retrying`);
             }
         }
-
+        
         // log if score was found
         const account = path.basename(cookieFilePath, '.json');
         if (score !== null) {
@@ -47,7 +47,6 @@ export async function getScore(cookieFilePath) {
             console.error(`Failed to retrieve score for ${account}: Score was not found after ${maxRetries} attempts`);
             logToFile(account, `Error fetching score: Score was not found`);
         }
-
     } catch (error) {
         const account = path.basename(cookieFilePath, '.json');
         console.error(`Failed to retrieve score for ${account}:`, error.message);

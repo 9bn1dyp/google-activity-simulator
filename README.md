@@ -6,7 +6,7 @@ Google reCAPTCHA uses a score system to determine the difficulty of the CAPTCHA 
 
 Two main factors affect the score: **IP address** and **activity** on the Google account.
 
-You can check your score [here](https://recaptcha-demo.appspot.com/recaptcha-v3-request-scores.php).
+You can check your score [here](https://antcpt.com/score_detector/).
 
 #### Score Table
 
